@@ -80,13 +80,14 @@ class YoutubeVideoDownloader:
         audio_pipe_thread.start()
 
         output = 0
-        while True:
-            chunk = process.stdout.read(1024000)
-            if chunk == b"":
-                break
-            output += 1024000
-            logger.info(f"Output: {output}")
-            yield chunk
-        # self.save_pipe("test123.ts", process.stdout)
-        video_pipe_thread.join()
-        audio_pipe_thread.join()
+        try:
+            while True:
+                chunk = process.stdout.read(1024000)
+                if chunk == b"":
+                    break
+                output += 1024000
+                logger.info(f"Output: {output}")
+                yield chunk
+        finally:
+            video_pipe_thread.join()
+            audio_pipe_thread.join()
