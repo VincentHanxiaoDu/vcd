@@ -8,6 +8,7 @@ from seleniumbase import Driver
 import re
 import base64
 import json
+from hashlib import sha1
 import time
 
 
@@ -97,8 +98,10 @@ class YouTubeAuthClient:
     @staticmethod
     def build_session_token_func(driver, session_token_stateful):
         def extract_session_token(data):
+            # print(data)
+            
             url = data.get("params", {}).get("response", {}).get("url", "")
-            if re.match(r"https://studio.youtube.com/youtubei/v1/ars/grst\?", url):
+            if re.match(r"https://studio.youtube.com/youtubei/v1/att/esr", url):
                 request_id = data.get("params", {}).get("requestId")
                 if request_id is not None:
                     session_token_stateful.set(
@@ -106,18 +109,29 @@ class YouTubeAuthClient:
                             driver.execute_cdp_cmd(
                                 "Network.getResponseBody", {"requestId": request_id}
                             )["body"]
-                        )["sessionToken"]
+                        )["ctx"]
                     )
+
+            # if re.match(r"https://studio.youtube.com/youtubei/v1/ars/grst\?", url):
+            #     request_id = data.get("params", {}).get("requestId")
+            #     if request_id is not None:
+            #         session_token_stateful.set(
+            #             json.loads(
+            #                 driver.execute_cdp_cmd(
+            #                     "Network.getResponseBody", {"requestId": request_id}
+            #                 )["body"]
+            #             )["sessionToken"]
+            #         )
 
         return extract_session_token
 
-    def login(self, timeout=120):
+    def get_cookies(self, timeout=120):
         try:
             cookies = Stateful()
             is_timeout = timer(timeout)
             headless = False
             if self._has_credential:
-                headless = False
+                headless = True
             driver = Driver(uc_cdp=True, headless=headless)
             session_token_stateful = Stateful()
             extract_session_token = self.build_session_token_func(
@@ -149,6 +163,7 @@ class YouTubeAuthClient:
                 "APISID",
                 "SAPISID",
                 "LOGIN_INFO",
+                "VISITOR_INFO1_LIVE"
             }
             while True:
                 cookies = {
@@ -158,6 +173,7 @@ class YouTubeAuthClient:
                     )
                 }
                 if required_cookies.issubset(cookies.keys()):
+                    cookies = {k: v for k, v in cookies.items() if k in required_cookies}
                     break
                 if is_timeout():
                     raise TimeoutError()

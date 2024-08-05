@@ -1,5 +1,6 @@
 import requests
 import logging
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class HttpClient:
                 return func(*args, **kwargs)
             except Exception as e:
                 logger.warn(
-                    f"Failed to execute {func.__name__}, retrying... {i + 1}/{self.retry}"
+                    f"Failed to execute {func.__name__}, retrying... {i + 1}/{self.retry}, traceback: {traceback.format_exc()}"
                 )
         raise RequestFailedException(f"Failed to execute {func.__name__}")
 
