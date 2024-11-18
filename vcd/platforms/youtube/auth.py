@@ -111,34 +111,18 @@ class YouTubeAuthClient:
                             )["body"]
                         )["ctx"]
                     )
-
-            # if re.match(r"https://studio.youtube.com/youtubei/v1/ars/grst\?", url):
-            #     request_id = data.get("params", {}).get("requestId")
-            #     if request_id is not None:
-            #         session_token_stateful.set(
-            #             json.loads(
-            #                 driver.execute_cdp_cmd(
-            #                     "Network.getResponseBody", {"requestId": request_id}
-            #                 )["body"]
-            #             )["sessionToken"]
-            #         )
-
         return extract_session_token
-
-    def get_cookies(self, timeout=120):
+    
+    def login_driver(self, headless=False):
         try:
-            cookies = Stateful()
-            is_timeout = timer(timeout)
-            headless = False
-            if self._has_credential:
-                headless = True
             driver = Driver(uc_cdp=True, headless=headless)
             session_token_stateful = Stateful()
             extract_session_token = self.build_session_token_func(
                 driver, session_token_stateful
             )
             driver.add_cdp_listener("Network.responseReceived", extract_session_token)
-            driver.uc_open_with_reconnect("https://studio.youtube.com", 3)
+            # driver.uc_open_with_reconnect("https://studio.youtube.com", 3)
+            driver.get("https://studio.youtube.com")
             if self._has_credential:
                 driver.wait_for_element_visible(
                     'input[type="email"]', timeout=10
@@ -152,32 +136,29 @@ class YouTubeAuthClient:
                 driver.wait_for_element_visible(
                     '//button[.//span[text()="Next"]]', by="xpath"
                 ).click()
-
-            session_token = session_token_stateful.get(
-                block=True, is_timeout=is_timeout
-            )
-            required_cookies = {
-                "SID",
-                "HSID",
-                "SSID",
-                "APISID",
-                "SAPISID",
-                "LOGIN_INFO",
-                "VISITOR_INFO1_LIVE"
-            }
-            while True:
-                cookies = {
-                    c["name"]: c["value"]
-                    for c in filter(
-                        lambda x: x["domain"] == ".youtube.com", driver.get_cookies()
-                    )
-                }
-                if required_cookies.issubset(cookies.keys()):
-                    cookies = {k: v for k, v in cookies.items() if k in required_cookies}
-                    break
-                if is_timeout():
-                    raise TimeoutError()
-                time.sleep(1)
-            return {**cookies, "SESSION_TOKEN": session_token}
-        finally:
+            return driver, session_token_stateful
+        except Exception as e:
             driver.quit()
+            raise e
+
+    def get_cookies(self, timeout=120):
+        headless = False
+        if self._has_credential:
+            headless = True
+        cookies = Stateful()            
+            
+        while True:
+            cookies = {
+                c["name"]: c["value"]
+                for c in filter(
+                    lambda x: x["domain"] == ".youtube.com", driver.get_cookies()
+                )
+            }
+            if required_cookies.issubset(cookies.keys()):
+                cookies = {k: v for k, v in cookies.items() if k in required_cookies}
+                break
+            if is_timeout():
+                raise TimeoutError()
+            time.sleep(1)
+        driver.quit()
+        return {**cookies, "SESSION_TOKEN": session_token}

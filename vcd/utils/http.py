@@ -1,6 +1,7 @@
 import requests
 import logging
 import traceback
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class HttpClient:
         raise RequestFailedException(f"Failed to execute {func.__name__}")
 
     def _get(self, url, accepted_status={200}, **kwargs):
-        res = requests.get(url, proxies=self.proxies, **kwargs)
+        res = self.session.get(url, proxies=self.proxies, **kwargs)
         if res.status_code not in accepted_status:
             logger.warn(f"Failed to get {url}, status code: {res.status_code}")
             raise RequestFailedException(
@@ -52,7 +53,7 @@ class HttpClient:
         return res
 
     def _post(self, url, accepted_status={200}, **kwargs):
-        res = requests.post(url, proxies=self.proxies, **kwargs)
+        res = self.session.post(url, proxies=self.proxies, **kwargs)
         if res.status_code not in accepted_status:
             logger.warn(f"Failed to post {url}, status code: {res.status_code}")
             raise RequestFailedException(
